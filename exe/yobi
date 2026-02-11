@@ -1,0 +1,142 @@
+#!env ruby
+# frozen_string_literal: true
+
+$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
+
+require "base64"
+require "erb"
+require "json"
+require "net/http"
+require "optparse"
+require "tty-markdown"
+require "uri"
+
+require "yobi"
+
+# parsing arguments
+@options = { print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false }
+
+parser = OptionParser.new do |opts|
+  opts.banner = %(
+  #{Yobi.name} - #{Yobi.description}
+
+  Usage:
+    yobi [METHOD] <url> [HEADER:VALUE] [key=value]
+
+  Examples:
+    yobi https://api.example.com/users
+    yobi POST https://api.example.com/users name=John age=30
+    yobi GET :8080/api/items Authorization:"Bearer $TOKEN"
+    yobi -A basic -a user:pass https://api.example.com/secure-data
+    yobi --raw --print B POST https://httpbin.org/anything | jq '.headers["User-Agent"]'
+
+   Options:
+  )
+
+  opts.on("-p", "--print FORMAT", "Specify the output format (e.g., 'H' for headers, 'B' for body)") do |format|
+    @options[:print] = format.upcase || "HB" # default to printing both headers and body
+    warn "[Argument Error] Unsupported format: #{format}" unless format.match?(/\A[HB]+\z/i)
+  end
+
+  opts.on("-a", "--auth USER:PASS", "Specify basic authentication credentials") do |auth|
+    @options[:auth] = auth
+  end
+
+  opts.on("-A", "--auth-type TYPE", "Specify authentication type (e.g., basic, digest, bearer)") do |auth_type|
+    @options[:auth_type] = auth_type
+  end
+
+  opts.on("--raw", "Print raw request and response data") do
+    @options[:raw] = true
+  end
+
+  opts.on("-h", "--help", "Print this help message") do
+    puts opts
+    exit
+  end
+
+  opts.on("-v", "--verbose", "Print detailed request and response information") do
+    @options[:verbose] = true
+  end
+
+  opts.on("--version", "Print app version") do
+    puts "#{Yobi.name} v#{Yobi::VERSION}"
+    exit
+  end
+end
+
+parser.parse!(ARGV)
+
+# resolve the HTTP method
+method = Yobi::Http::METHODS.include?(ARGV[0]) ? ARGV.shift : "GET"
+
+# resolve the URL
+url = case ARGV[0]
+      when %r{\Ahttps?://}
+        ARGV.shift
+      when /\A:\d+/
+        "http://localhost#{ARGV.shift}"
+      else
+        "http://#{ARGV.shift}"
+      end
+
+data =
+  ARGV.select { |arg| arg.include?("=") }.map.to_h { |arg| arg.split("=", 2).map(&:strip) }
+
+headers =
+  { "Content-Type" => "application/json", "User-Agent" => "#{Yobi.name}/#{Yobi::VERSION}" }
+  .merge(ARGV.select { |arg| arg.include?(":") }.map.to_h { |arg| arg.split(":", 2).map(&:strip) })
+
+# prepare authentication header if auth is provided
+if @options[:auth]
+  auth_type = @options[:auth_type] || "basic"
+  case auth_type.downcase
+  when "basic"
+    headers["Authorization"] = "Basic #{Base64.strict_encode64(@options[:auth])}"
+  when "bearer"
+    headers["Authorization"] = "Bearer #{@options[:auth]}"
+  else
+    warn "Unsupported authentication type: #{auth_type}"
+  end
+end
+
+pp [method, url, data, headers, @options, ARGV] if ENV["YOBI_DEBUG"]
+
+Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https") do |http|
+  options = @options
+  request_class = Net::HTTP.const_get(method.capitalize)
+  request = request_class.new(URI(url))
+
+  headers.each { |key, value| request[key] = value }
+  request["Content-Type"] ||= "application/json"
+
+  request.body = data.to_json unless data.empty?
+
+  response = http.request(request)
+
+  body = nil
+  if response["Content-Type"]&.include?("application/json") && response.body
+    begin
+      body ||= JSON.pretty_generate(JSON.parse(response.body))
+    rescue StandardError
+      body ||= response.body
+    end
+  else
+    body ||= response.body
+  end
+
+  if options[:raw]
+    if options[:print].include?("H")
+      puts "HTTP/#{response.http_version} #{response.code} #{response.message}"
+      response.each_header { |key, value| puts "#{key}: #{value}" }
+      puts
+    end
+
+    puts body if options[:print].include?("B") && body
+
+    break
+  end
+
+  view = Yobi.view(:output)
+  puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
+end

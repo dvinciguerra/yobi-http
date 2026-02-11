@@ -1,0 +1,26 @@
+<% if options[:verbose] %>
+# <%= request.method %> <%= request.path %> HTTP/1.1
+
+```yaml
+<%= request.each_capitalized.to_h.sort.map { |key, value| "#{key}: #{value}" }.join("\n") %>
+```
+
+```json
+<%= JSON.pretty_generate(JSON.parse(request.body)) if request.body && !request.body.empty? %>
+```
+
+<% end %>
+
+# HTTP/<%= response.http_version %> <%= response.code %> <%= response.message %>
+
+<% if options[:print].include?('H') %>
+```yaml
+<%= response.each_capitalized.to_h.sort.map { |key, value| "#{key}: #{value}" }.join("\n") %>
+```
+<% end %>
+
+<% if options[:print].include?('B') %>
+```<%= /json/.match?(response['Content-Type']) ? 'json' : 'html' %>
+<%= body %>
+```
+<% end %>
