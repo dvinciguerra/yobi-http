@@ -11,9 +11,9 @@
 
 <% end %>
 
+<% if options[:print].include?('H') %>
 # HTTP/<%= response.http_version %> <%= response.code %> <%= response.message %>
 
-<% if options[:print].include?('H') %>
 ```yaml
 <%= response.each_capitalized.to_h.sort.map { |key, value| "#{key}: #{value}" }.join("\n") %>
 ```
