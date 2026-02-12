@@ -14,7 +14,7 @@ require "uri"
 require "yobi"
 
 # parsing arguments
-@options = { print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false }
+@options = { print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false }
 
 parser = OptionParser.new do |opts|
   opts.banner = %(
@@ -53,6 +53,10 @@ parser = OptionParser.new do |opts|
   opts.on("-h", "--help", "Print this help message") do
     puts opts
     exit
+  end
+
+  opts.on("--offline", "Run in offline mode (prepare request but do not send)") do
+    @options[:offline] = true
   end
 
   opts.on("-v", "--verbose", "Print detailed request and response information") do
@@ -111,6 +115,32 @@ Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https
   request["Content-Type"] ||= "application/json"
 
   request.body = data.to_json unless data.empty?
+
+  if options[:offline]
+    options[:verbose] = true
+    # In offline mode, we prepare the request but do not send it. Instead, we print the request details for debugging
+    # purposes.
+    response = Net::HTTPResponse.new("1.1", "200", "OK")
+    response["Content-Type"] = "application/json"
+    response["Access-Control-Allow-Credentials"] = true
+    response["Access-Control-Allow-Origin"] = "*"
+    response["Connection"] = "close"
+    response["Date"] = Time.now.iso8601
+    response["Server"] = "yobi-offline/#{Yobi::VERSION}"
+    response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
+
+    body = JSON.pretty_generate({
+                                           method: method,
+                                           url: url,
+                                           headers: headers,
+                                           body: request.body,
+                                           options: options
+                                         })
+
+    view = Yobi.view(:output)
+    puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
+    break
+  end
 
   response = http.request(request)
 
