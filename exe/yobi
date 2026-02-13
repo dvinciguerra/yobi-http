@@ -129,14 +129,7 @@ Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https
     response["Date"] = Time.now.httpdate
     response["Server"] = "yobi-offline/#{Yobi::VERSION}"
     response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
-
-    body = JSON.pretty_generate({
-                                           method: method,
-                                           url: url,
-                                           headers: headers,
-                                           body: request.body,
-                                           options: options
-                                         })
+    response.body = body = JSON.pretty_generate({ message: "Offline mode enabled" })
 
     view = Yobi.view(:output)
     puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
