@@ -8,6 +8,7 @@ require "erb"
 require "json"
 require "net/http"
 require "optparse"
+require "time"
 require "tty-markdown"
 require "uri"
 
@@ -125,7 +126,7 @@ Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https
     response["Access-Control-Allow-Credentials"] = true
     response["Access-Control-Allow-Origin"] = "*"
     response["Connection"] = "close"
-    response["Date"] = Time.now.iso8601
+    response["Date"] = Time.now.httpdate
     response["Server"] = "yobi-offline/#{Yobi::VERSION}"
     response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
 
