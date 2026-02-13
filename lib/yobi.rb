@@ -10,7 +10,7 @@ module Yobi
   class Error < StandardError; end
 
   # Yobi gem version
-  VERSION = "0.4.0"
+  VERSION = "0.4.1"
 
 
   def self.name
