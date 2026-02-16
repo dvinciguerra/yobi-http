@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+## [0.4.2]
+- Fix prevent request connection in offline mode
+
 ## [0.4.1]
 
 - Fix Time requirement

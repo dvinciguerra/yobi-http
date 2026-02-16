@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
-
 require "yobi/http"
 
 # Yobi Http CLI client namespace
@@ -10,7 +8,7 @@ module Yobi
   class Error < StandardError; end
 
   # Yobi gem version
-  VERSION = "0.4.1"
+  VERSION = "0.4.2"
 
 
   def self.name
