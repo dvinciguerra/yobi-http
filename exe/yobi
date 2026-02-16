@@ -107,6 +107,12 @@ end
 
 pp [method, url, data, headers, @options, ARGV] if ENV["YOBI_DEBUG"]
 
+if @options[:offline]
+  Net::HTTP.class_eval do
+    def connect; end
+  end
+end
+
 Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https") do |http|
   options = @options
   request_class = Net::HTTP.const_get(method.capitalize)
