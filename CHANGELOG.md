@@ -1,6 +1,11 @@
 ## [Unreleased]
 
+## [0.6.0]
+
+- Add output to file feature
+
 ## [0.4.2]
+
 - Fix prevent request connection in offline mode
 
 ## [0.4.1]
