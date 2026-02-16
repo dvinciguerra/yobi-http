@@ -60,6 +60,10 @@ parser = OptionParser.new do |opts|
     @options[:offline] = true
   end
 
+  opts.on("-o", "--output FILE", "Write output to a file instead of STDOUT") do |file|
+    @options[:output] = file
+  end
+
   opts.on("-v", "--verbose", "Print detailed request and response information") do
     @options[:verbose] = true
   end
@@ -168,5 +172,11 @@ Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https
   end
 
   view = Yobi.view(:output)
-  puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
+
+  if options[:output]
+    file = File.expand_path(options[:output], Dir.pwd)
+    File.write(file, ERB.new(view).result(binding), mode: "w")
+  else
+    puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
+  end
 end
