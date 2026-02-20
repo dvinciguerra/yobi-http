@@ -3,7 +3,6 @@
 
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 
-require "base64"
 require "erb"
 require "json"
 require "net/http"
@@ -77,106 +76,74 @@ end
 parser.parse!(ARGV)
 
 # resolve the HTTP method
-method = Yobi::Http::METHODS.include?(ARGV[0]) ? ARGV.shift : "GET"
+method = Yobi.args.http_method?(ARGV[0]) ? ARGV.shift : "GET"
 
 # resolve the URL
-url = case ARGV[0]
-      when %r{\Ahttps?://}
-        ARGV.shift
-      when /\A:\d+/
-        "http://localhost#{ARGV.shift}"
-      else
-        "http://#{ARGV.shift}"
-      end
+url = Yobi.args.url(ARGV.shift)
 
-data =
-  ARGV.select { |arg| arg.include?("=") }.map.to_h { |arg| arg.split("=", 2).map(&:strip) }
-
-headers =
-  { "Content-Type" => "application/json", "User-Agent" => "#{Yobi.name}/#{Yobi::VERSION}" }
-  .merge(ARGV.select { |arg| arg.include?(":") }.map.to_h { |arg| arg.split(":", 2).map(&:strip) })
+data = Yobi.args.parse_data(ARGV)
+headers = Yobi.args.parse_headers(ARGV)
 
 # prepare authentication header if auth is provided
-if @options[:auth]
-  auth_type = @options[:auth_type] || "basic"
-  case auth_type.downcase
-  when "basic"
-    headers["Authorization"] = "Basic #{Base64.strict_encode64(@options[:auth])}"
-  when "bearer"
-    headers["Authorization"] = "Bearer #{@options[:auth]}"
-  else
-    warn "Unsupported authentication type: #{auth_type}"
-  end
-end
+Yobi.args.auth_header(headers, @options) if @options[:auth]
 
 pp [method, url, data, headers, @options, ARGV] if ENV["YOBI_DEBUG"]
 
-if @options[:offline]
+# Extend Net::HTTPResponse to add util behaviors
+def offline_mode(request, options)
   Net::HTTP.class_eval do
     def connect; end
   end
+
+  options[:verbose] = true
+
+  response = Net::HTTPResponse.new("1.1", "200", "OK")
+  response["Content-Type"] = "application/json"
+  response["Access-Control-Allow-Credentials"] = true
+  response["Access-Control-Allow-Origin"] = "*"
+  response["Connection"] = "close"
+  response["Date"] = Time.now.httpdate
+  response["Server"] = "yobi-offline/#{Yobi::VERSION}"
+  response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
+  response.body = body = JSON.pretty_generate({ message: "Offline mode enabled" })
+
+  view = Yobi.view(:output)
+  puts TTY::Markdown.parse(view.result(binding), color: :always)
+
+  exit 0
 end
 
-Net::HTTP.start(URI(url).host, URI(url).port, use_ssl: URI(url).scheme == "https") do |http|
-  options = @options
-  request_class = Net::HTTP.const_get(method.capitalize)
-  request = request_class.new(URI(url))
-
-  headers.each { |key, value| request[key] = value }
-  request["Content-Type"] ||= "application/json"
-
-  request.body = data.to_json unless data.empty?
-
-  if options[:offline]
-    options[:verbose] = true
-    # In offline mode, we prepare the request but do not send it. Instead, we print the request details for debugging
-    # purposes.
-    response = Net::HTTPResponse.new("1.1", "200", "OK")
-    response["Content-Type"] = "application/json"
-    response["Access-Control-Allow-Credentials"] = true
-    response["Access-Control-Allow-Origin"] = "*"
-    response["Connection"] = "close"
-    response["Date"] = Time.now.httpdate
-    response["Server"] = "yobi-offline/#{Yobi::VERSION}"
-    response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
-    response.body = body = JSON.pretty_generate({ message: "Offline mode enabled" })
-
-    view = Yobi.view(:output)
-    puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
-    break
+def raw_mode(_request, response, options)
+  if options[:print].include?("H")
+    puts "HTTP/#{response.http_version} #{response.code} #{response.message}"
+    response.each_header { |key, value| puts "#{key}: #{value}" }
+    puts
   end
+
+  body = response.parsed_body
+  puts body if options[:print].include?("B") && body
+
+  exit 0
+end
+
+Yobi.request(method, url, data: data, headers: headers, options: @options) do |http, request|
+  options = @options
+
+  offline_mode(request, options) if options[:offline]
 
   response = http.request(request)
 
-  body = nil
-  if response["Content-Type"]&.include?("application/json") && response.body
-    begin
-      body ||= JSON.pretty_generate(JSON.parse(response.body))
-    rescue StandardError
-      body ||= response.body
-    end
-  else
-    body ||= response.body
-  end
+  raw_mode(request, response, options) if options[:raw]
 
-  if options[:raw]
-    if options[:print].include?("H")
-      puts "HTTP/#{response.http_version} #{response.code} #{response.message}"
-      response.each_header { |key, value| puts "#{key}: #{value}" }
-      puts
-    end
-
-    puts body if options[:print].include?("B") && body
-
-    break
-  end
+  body = JSON.pretty_generate(response.parsed_body)
 
   view = Yobi.view(:output)
+  output_result = view.result(binding)
 
   if options[:output]
     file = File.expand_path(options[:output], Dir.pwd)
-    File.write(file, ERB.new(view).result(binding), mode: "w")
+    File.write(file, output_result, mode: "w")
   else
-    puts TTY::Markdown.parse(ERB.new(view).result(binding), color: :always)
+    puts TTY::Markdown.parse(output_result, color: :always)
   end
 end

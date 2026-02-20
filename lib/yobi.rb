@@ -1,26 +1,37 @@
 # frozen_string_literal: true
 
+require "erb"
+
+require "yobi/cli"
+require "yobi/extensions"
 require "yobi/http"
+require "yobi/version"
 
 # Yobi Http CLI client namespace
 module Yobi
   # Standard Yobi error class
   class Error < StandardError; end
 
-  # Yobi gem version
-  VERSION = "0.6.0"
+  class << self
+    def name
+      "yobi"
+    end
 
+    def description
+      "A simple HTTP client for testing APIs from the command line."
+    end
 
-  def self.name
-    "yobi"
-  end
+    # Load project templates
+    def view(name)
+      ERB.new(File.read(File.join(__dir__, "views/#{name}.md.erb")))
+    end
 
-  def self.description
-    "A simple HTTP client for testing APIs from the command line."
-  end
+    def request(...)
+      Yobi::Http.request(...)
+    end
 
-  # Load project templates
-  def self.view(name)
-    File.read(File.join(__dir__, "views/#{name}.md.erb"))
+    def args
+      Yobi::CLI::Arguments
+    end
   end
 end
