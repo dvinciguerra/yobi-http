@@ -6,6 +6,7 @@ and flexible, allowing you to customize your requests as needed.
 Its a lightweight implementation of the HTTPie tool, which is a command-line HTTP client that allows you to make
 HTTP requests and view the responses in a human-friendly format.
 
+![](./screenshot.png)
 
 ## Installation
 
