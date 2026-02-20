@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-lib = File.expand_path("lib", __dir__)
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-
-require "yobi"
+require_relative "lib/yobi/version"
 
 Gem::Specification.new do |spec|
   spec.name = "yobi-http"
@@ -35,6 +32,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Uncomment to register a new dependency of your gem
+  spec.add_dependency "base64", "~> 0.3"
   spec.add_dependency "tty-markdown", "~> 0.7"
 
   # For more information and examples about making a new gem, check out our
