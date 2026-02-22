@@ -14,7 +14,9 @@ require "uri"
 require "yobi"
 
 # parsing arguments
-@options = { print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false }
+@options = {
+  print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false, follow: false, debug: false
+}
 
 parser = OptionParser.new do |opts|
   opts.banner = %(
@@ -59,11 +61,21 @@ parser = OptionParser.new do |opts|
     @options[:offline] = true
   end
 
+  opts.on("--follow", "Automatically follow HTTP redirects") do
+    @options[:follow] = true
+  end
+
   opts.on("-o", "--output FILE", "Write output to a file instead of STDOUT") do |file|
     @options[:output] = file
   end
 
   opts.on("-v", "--verbose", "Print detailed request and response information") do
+    @options[:verbose] = true
+
+  end
+
+  opts.on("--debug", "Print debug information") do
+    @options[:debug] = true
     @options[:verbose] = true
   end
 
@@ -126,12 +138,30 @@ def raw_mode(_request, response, options)
   exit 0
 end
 
+def follow_redirects(response, url, method, data, headers, options)
+  return response unless response.is_a?(Net::HTTPRedirection)
+
+  location = response["location"]
+  warn "Redirected to #{location}" if options[:debug]
+  new_url = URI.join(url, location).to_s
+
+  Yobi.request(method, new_url, data: data, headers: headers, options: options) do |new_http, new_request|
+    response = new_http.request(new_request)
+    return follow_redirects(response, new_url, method, data, headers, options)
+  end
+end
+
 Yobi.request(method, url, data: data, headers: headers, options: @options) do |http, request|
   options = @options
 
   offline_mode(request, options) if options[:offline]
 
-  response = http.request(request)
+  response =
+    if options[:follow]
+      follow_redirects(http.request(request), url, method, data, headers, options)
+    else
+      http.request(request)
+    end
 
   raw_mode(request, response, options) if options[:raw]
 
