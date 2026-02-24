@@ -15,7 +15,8 @@ require "yobi"
 
 # parsing arguments
 @options = {
-  print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false, follow: false, debug: false
+  print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false, follow: false, debug: false,
+  timeout: nil, download: false
 }
 
 parser = OptionParser.new do |opts|
@@ -36,8 +37,8 @@ parser = OptionParser.new do |opts|
   )
 
   opts.on("-p", "--print FORMAT", "Specify the output format (e.g., 'H' for headers, 'B' for body)") do |format|
-    @options[:print] = format.upcase || "HB" # default to printing both headers and body
-    warn "[Argument Error] Unsupported format: #{format}" unless format.match?(/\A[HB]+\z/i)
+    @options[:print] = format || "HB" # default to printing both headers and body
+    warn "[Argument Error] Unsupported format: #{format}" unless format.match?(/\A[HBhb]+\z/)
   end
 
   opts.on("-a", "--auth USER:PASS", "Specify basic authentication credentials") do |auth|
@@ -69,9 +70,16 @@ parser = OptionParser.new do |opts|
     @options[:output] = file
   end
 
+  opts.on("--timeout SECONDS", "Set a custom timeout for the request (integer or float)") do |timeout|
+    @options[:timeout] = timeout.to_f
+  end
+
+  opts.on("--download", "Download response body to a file specified by --output") do
+    @options[:download] = true
+  end
+
   opts.on("-v", "--verbose", "Print detailed request and response information") do
     @options[:verbose] = true
-
   end
 
   opts.on("--debug", "Print debug information") do
@@ -99,81 +107,25 @@ headers = Yobi.args.parse_headers(ARGV)
 # prepare authentication header if auth is provided
 Yobi.args.auth_header(headers, @options) if @options[:auth]
 
-pp [method, url, data, headers, @options, ARGV] if ENV["YOBI_DEBUG"]
-
-# Extend Net::HTTPResponse to add util behaviors
-def offline_mode(request, options)
-  Net::HTTP.class_eval do
-    def connect; end
-  end
-
-  options[:verbose] = true
-
-  response = Net::HTTPResponse.new("1.1", "200", "OK")
-  response["Content-Type"] = "application/json"
-  response["Access-Control-Allow-Credentials"] = true
-  response["Access-Control-Allow-Origin"] = "*"
-  response["Connection"] = "close"
-  response["Date"] = Time.now.httpdate
-  response["Server"] = "yobi-offline/#{Yobi::VERSION}"
-  response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
-  response.body = body = JSON.pretty_generate({ message: "Offline mode enabled" })
-
-  view = Yobi.view(:output)
-  puts TTY::Markdown.parse(view.result(binding), color: :always)
-
-  exit 0
-end
-
-def raw_mode(_request, response, options)
-  if options[:print].include?("H")
-    puts "HTTP/#{response.http_version} #{response.code} #{response.message}"
-    response.each_header { |key, value| puts "#{key}: #{value}" }
-    puts
-  end
-
-  body = response.parsed_body
-  puts body if options[:print].include?("B") && body
-
-  exit 0
-end
-
-def follow_redirects(response, url, method, data, headers, options)
-  return response unless response.is_a?(Net::HTTPRedirection)
-
-  location = response["location"]
-  warn "Redirected to #{location}" if options[:debug]
-  new_url = URI.join(url, location).to_s
-
-  Yobi.request(method, new_url, data: data, headers: headers, options: options) do |new_http, new_request|
-    response = new_http.request(new_request)
-    return follow_redirects(response, new_url, method, data, headers, options)
-  end
-end
-
-Yobi.request(method, url, data: data, headers: headers, options: @options) do |http, request|
+Yobi::Http.request(method, url, data: data, headers: headers, options: @options) do |http, request|
   options = @options
 
-  offline_mode(request, options) if options[:offline]
-
+  # follow redirects, offline, download or standard request mode
   response =
     if options[:follow]
-      follow_redirects(http.request(request), url, method, data, headers, options)
+      Yobi::Http.follow_redirects(http.request(request), url, method, data, headers, options)
+    elsif options[:offline]
+      Yobi::Http.offline_mode(request, options)
+    elsif options[:download]
+      Yobi::Http.download(request, http, options)
     else
       http.request(request)
     end
 
-  raw_mode(request, response, options) if options[:raw]
-
-  body = JSON.pretty_generate(response.parsed_body)
-
-  view = Yobi.view(:output)
-  output_result = view.result(binding)
-
-  if options[:output]
-    file = File.expand_path(options[:output], Dir.pwd)
-    File.write(file, output_result, mode: "w")
+  # render output
+  if options[:raw]
+    Yobi::Renders::Raw.render(request, response, options)
   else
-    puts TTY::Markdown.parse(output_result, color: :always)
+    Yobi::Renders::Colored.render(request, response, options)
   end
 end
