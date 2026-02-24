@@ -50,6 +50,49 @@ module Yobi
       end
       # rubocop:enable Metrics/ParameterLists
 
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      def offline_mode(_request, options)
+        Net::HTTP.class_eval do
+          def connect; end
+        end
+
+        options[:verbose] = true
+
+        Net::HTTPResponse.new("1.1", "200", "OK").tap do |response|
+          response["Content-Type"] = "application/json"
+          response["Access-Control-Allow-Credentials"] = true
+          response["Access-Control-Allow-Origin"] = "*"
+          response["Connection"] = "close"
+          response["Date"] = Time.now.httpdate
+          response["Server"] = "yobi-offline/#{Yobi::VERSION}"
+          response["X-Powered-By"] = "Yobi/#{Yobi::VERSION}"
+
+          response.body = JSON.pretty_generate({ message: "Offline mode enabled" })
+          response.instance_variable_set(:@read, true)
+        end
+      end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      def download(request, http, options)
+        http.request(request) do |response|
+          total_bytes = response["Content-Length"]&.to_i
+          progress = Yobi::UI::Progress.new(total_bytes)
+
+          filename = options[:output] || File.basename(URI.parse(url).path)
+          File.open(filename, "wb") do |file|
+            response.read_body do |chunk|
+              file.write(chunk)
+              progress.increment(chunk.size)
+            end
+          end
+
+          puts "\nDownload finished: #{filename}"
+        end
+
+        exit 0
+      end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
     end
   end
 end
