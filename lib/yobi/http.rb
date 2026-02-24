@@ -76,6 +76,7 @@ module Yobi
       # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       def download(request, http, options)
         http.request(request) do |response|
+          url = request.uri.to_s
           total_bytes = response["Content-Length"]&.to_i
           progress = Yobi::UI::Progress.new(total_bytes)
 
