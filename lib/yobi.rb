@@ -5,6 +5,8 @@ require "erb"
 require "yobi/cli"
 require "yobi/extensions"
 require "yobi/http"
+require "yobi/ui"
+require "yobi/renders"
 require "yobi/version"
 
 # Yobi Http CLI client namespace
