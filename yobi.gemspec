@@ -11,17 +11,18 @@ Gem::Specification.new do |spec|
 
   spec.summary = "Yobi is a terminal tool to make HTTP requests and display responses in a friendly way inspired by HTTPie."
   spec.description = <<~DESCRIPTION
-    Yobi is a terminal tool to make HTTP requests and display responses in a friendly way inspired by HTTPie.
+    +Yobi+ is a terminal tool to make +HTTP+ requests and display responses in a friendly way inspired by HTTPie.
 
     It allows you to easily send HTTP requests and view the responses in a human-readable format, making it easier
     to debug and test APIs from the command line.
 
-    The main features of Yobi include:
-      * Support for various HTTP methods (GET, POST, PUT, DELETE, etc.)
-      * Customizable request headers and body
-      * Pretty-printed responses with syntax highlighting
-      * Download response content to a file
-      * Low dependency and easy installation
+    === The main features of Yobi include:
+
+    * Support for various HTTP methods _(GET, POST, PUT, DELETE, etc.)_
+    * Customizable request +headers+ and +body+
+    * Pretty-printed responses with _syntax highlighting_
+    * _Download mode_ saves response content to a file
+    * _Low dependency_ and _easy installation_
   DESCRIPTION
 
   spec.license = "MIT"
