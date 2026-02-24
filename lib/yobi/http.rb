@@ -33,7 +33,23 @@ module Yobi
           exit 1
         end
       end
-      # rubocop:enable Metrics/AbcSize
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+      # rubocop:disable Metrics/ParameterLists
+      def follow_redirects(response, url, method, data, headers, options)
+        return response unless response.is_a?(Net::HTTPRedirection)
+
+        location = response["location"]
+        warn "Redirected to #{location}" if options[:debug]
+        new_url = URI.join(url, location).to_s
+
+        request(method, new_url, data: data, headers: headers, options: options) do |new_http, new_request|
+          response = new_http.request(new_request)
+          return follow_redirects(response, new_url, method, data, headers, options)
+        end
+      end
+      # rubocop:enable Metrics/ParameterLists
+
     end
   end
 end
