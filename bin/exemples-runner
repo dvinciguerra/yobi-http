@@ -1,0 +1,42 @@
+#!ruby
+
+root_dir = File.expand_path("..", __dir__)
+
+examples_file = File.join(root_dir, "Examples.md")
+
+# examples = { "title" => "code" } that code is the ```bash code block below the ## example title
+examples = {}
+
+current_title = nil
+current_code = nil
+
+File.read(examples_file).each_line do |line|
+  if line.start_with?("## ")
+    # save previous example if exists
+    examples[current_title] = current_code.join("\n") if current_title && current_code
+
+    # start new example
+    current_title = line[3..-1].strip
+    current_code = []
+  elsif line.start_with?("```bash")
+    # start of code block, skip
+  elsif line.start_with?("```")
+    # end of code block, skip
+  elsif current_code
+    # inside code block, add to current code
+    current_code << line.strip
+  end
+end
+
+$stdout.sync = true
+
+puts "Running examples from #{examples_file}..."
+
+examples.each do |title, code|
+  puts "Running example: #{title}"
+
+  code = code.gsub("\s?yobi\s+", "#{root_dir}/exe/yobi ")
+  system(code)
+
+  sleep(1) # small delay between examples
+end
