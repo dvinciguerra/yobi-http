@@ -1,3 +1,7 @@
+[![Gem Version](https://badge.fury.io/rb/yobi-http.svg?icon=si%3Arubygems)](https://badge.fury.io/rb/yobi-http)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Maintainability](https://qlty.sh/gh/dvinciguerra/projects/yobi-http/maintainability.svg)](https://qlty.sh/gh/dvinciguerra/projects/yobi-http)
+
 # Yobi(呼び) Http Client
 
 Yobi is a Ruby gem that provides a simple and efficient way to make HTTP requests. It is designed to be easy to use
