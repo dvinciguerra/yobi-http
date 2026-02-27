@@ -23,6 +23,13 @@ yobi --debug POST https://httpbin.org/post name=Yobi type="HTTP client"
 yobi --debug POST https://httpbin.org/post name=Yobi type="HTTP client" --form
 ```
 
+## HTTP request with complex JSON body
+
+```bash
+yobi --debug POST https://httpbin.org/post  name=Yobi meta:='{"category": "HTTP client", "type": "rubygem", "year": 2026 }' released:=true  tags:'["ruby", "http", "gem"]'
+```
+
+
 ## HTTP request with query parameters
 
 ```bash
