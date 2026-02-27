@@ -59,6 +59,53 @@ RSpec.describe Yobi::CLI::Arguments do
 
       expect(described_class.parse_data(args)).to eq({ "name" => "John", "age" => "30" })
     end
+
+    context "when given an json string" do
+      it "parses the json string into a hash" do
+        args = ['data:={ "name": "John", "age": 30, "admin": false, "friends": ["Jane", "Doe"] }']
+
+        expect(described_class.parse_data(args))
+          .to eq({ "data" => { "name" => "John", "age" => 30, "admin" => false, "friends" => %w[Jane Doe] } })
+      end
+
+      it "raises an error if the json string is invalid" do
+        args = ['data:={"name": "John", "age": 30, "city": "New York"'] # Missing closing brace
+
+        expect { described_class.parse_data(args) }.to raise_error(SystemExit)
+      end
+    end
+
+    context "when given a json file path" do
+      let(:json_content) do
+        {
+          "title" => "Sample JSON",
+          "description" => "This is a sample JSON file.",
+          "version" => 1.0,
+          "tags" => %w[sample json example],
+          "metadata" => {
+            "author" => "John Doe",
+            "created" => "2024-06-01T12:00:00Z",
+            "updated" => "2024-06-10T15:30:00Z"
+          },
+          "published" => true,
+          "more_info" => nil
+        }
+      end
+
+      before do
+        File.write("sample.json", json_content.to_json)
+      end
+
+      after do
+        File.delete("sample.json") if File.exist?("sample.json")
+      end
+
+      it "parses the json file content into a hash" do
+        args = ["data:=@sample.json"]
+
+        expect(described_class.parse_data(args)).to eq({ "data" => json_content })
+      end
+    end
   end
 
   describe ".parse_headers" do
