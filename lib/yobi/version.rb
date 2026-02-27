@@ -2,5 +2,5 @@
 
 module Yobi
   # Yobi gem version
-  VERSION = "0.12.3"
+  VERSION = "0.14.0"
 end
