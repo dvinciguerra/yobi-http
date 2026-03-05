@@ -53,6 +53,21 @@ parser = OptionParser.new do |opts|
     @options[:raw] = true
   end
 
+  opts.on("-h", "--headers", "Print only response headers") do
+    @options[:raw] = true
+    @options[:print] = "H"
+  end
+
+  opts.on("-b", "--body", "Print only response body") do
+    @options[:raw] = true
+    @options[:print] = "B"
+  end
+
+  opts.on("--status", "Print only response status code") do
+    @options[:raw] = true
+    @options[:print] = "status"
+  end
+
   opts.on("--form", "Send data as application/x-www-form-urlencoded instead of JSON") do
     @options[:content_type] = :form
   end
@@ -72,11 +87,6 @@ parser = OptionParser.new do |opts|
   opts.on("--json", "Send data as application/json (default)") do
     # This option is implicit since JSON is the default, but we can set it explicitly if needed
     @options[:content_type] = :json
-  end
-
-  opts.on("-h", "--help", "Print this help message") do
-    puts opts
-    exit
   end
 
   opts.on("--offline", "Run in offline mode (prepare request but do not send)") do
@@ -112,6 +122,11 @@ parser = OptionParser.new do |opts|
     puts "#{Yobi.name} v#{Yobi::VERSION}"
     exit
   end
+
+  opts.on("--help", "Print this help message") do
+    puts opts
+    exit
+  end
 end
 
 parser.parse!(ARGV)
@@ -145,7 +160,9 @@ Yobi::Http.request(method, url, data: data, headers: headers, query: query, opti
     end
 
   # render output
-  if options[:raw]
+  if options[:raw] && options[:print].downcase == "status"
+    print response.code
+  elsif options[:raw]
     Yobi::Renders::Raw.render(request, response, options)
   else
     Yobi::Renders::Colored.render(request, response, options)
