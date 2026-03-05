@@ -2,29 +2,198 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Maintainability](https://qlty.sh/gh/dvinciguerra/projects/yobi-http/maintainability.svg)](https://qlty.sh/gh/dvinciguerra/projects/yobi-http)
 
-# Yobi(呼び) Http Client
+# :zap: Yobi(呼び) Http Client
 
-Yobi is a Ruby gem that provides a simple and efficient way to make HTTP requests. It is designed to be easy to use
-and flexible, allowing you to customize your requests as needed.
-
-Its a lightweight implementation of the HTTPie tool, which is a command-line HTTP client that allows you to make
-HTTP requests and view the responses in a human-friendly format.
+Yobi (呼び) is a modern HTTP client for the command line, written in Ruby, that makes interacting with APIs simple, intuitive, and fun. Inspired by HTTPie, Yobi provides an elegant way to make HTTP requests with formatted and readable output.
 
 ![](./screenshot.png)
 
+#### Main Features
+
+* Simple and intuitive interface - Natural and easy-to-remember syntax
+* Automatic formatting - JSON responses with syntax highlighting
+* Multiple authentication types - Basic, Bearer, Digest, and more
+* File download - Save responses directly to files
+* Redirect tracking - Automatically follow HTTP redirects
+* Customizable output - Control exactly what you want to see (headers, body, or both)
+* Full HTTP support - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+* Offline mode - Prepare and review requests without sending them
+* No heavy dependencies - Quick installation via RubyGems
+* Raw mode - Raw output for integration with other tools
+
+
 ## Installation
+
+#### Prerequisites
+
+* Ruby >= 3.0.0
+* RubyGems (usually included with Ruby)
+
+#### Via RubyGems (Recommended)
 
 ```bash
 gem install yobi-http
 ```
 
-## Usage
+#### From Source Code
 
-Some examples of how to use yobi:
+```bash
+# Clone the repository
+git clone https://github.com/dvinciguerra/yobi-http.git
+cd yobi-http
 
-- `yobi GET https://jsonplaceholder.typicode.com/posts/1` - Makes a GET request to the specified URL and prints the response.
-- `yobi POST https://jsonplaceholder.typicode.com/posts title="foo" body="bar" userId=1` - Makes a POST request to the specified URL with the given data and prints the response.
-- `yobi GET https://jsonplaceholder.typicode.com/posts/1 Authorization:"Bearer <token>"` - Makes a GET request to the specified URL with the given header and prints the response.
+# Install dependencies
+bundle install
+
+# Install the gem locally
+bundle exec rake install```bash
+gem install yobi-http
+```
+
+#### Check Installation
+
+```bash
+yobi --version
+```
+
+If you receive command not found: yobi:
+
+* Ensure that the RubyGems bin directory is in your PATH.
+* Try using gem which yobi-http to locate the installation.
+
+
+## Quick Guide
+
+#### Basic Syntax
+
+```bash
+yobi [METHOD] <url> [HEADER:VALUE] [key=value] [key::value]
+```
+
+### Instant Examples
+
+```bash
+# Simple GET
+yobi https://api.github.com/users/github
+
+# POST with JSON
+yobi POST https://jsonplaceholder.typicode.com/posts \
+  title="Hello" \
+  body="World" \
+  userId=1
+
+# With authentication
+yobi -A basic -a username:password https://api.example.com/data
+
+# WITH custom header
+yobi GET https://api.example.com/data \
+  Authorization:"Bearer your_token_here"
+
+# Save response to file
+yobi https://api.example.com/data -o response.json
+
+# Use localhost shortcut
+yobi :8080/api/items
+# Expands to: http://localhost:8080/api/items
+```
+
+**JSONPlaceholder API (Testing Service)**
+
+```bash
+# Get all posts
+yobi https://jsonplaceholder.typicode.com/posts
+
+# Get specific post
+yobi https://jsonplaceholder.typicode.com/posts/1
+
+# Create new post
+yobi POST https://jsonplaceholder.typicode.com/posts \
+  title="My new post" \
+  body="This is the content" \
+  userId=1
+
+# Update post
+yobi PUT https://jsonplaceholder.typicode.com/posts/1 \
+  title="Updated title"
+
+# Delete post
+yobi DELETE https://jsonplaceholder.typicode.com/posts/1
+```
+
+**GitHub API**
+
+```bash
+# User information
+yobi https://api.github.com/users/dvinciguerra
+
+# User repositories
+yobi https://api.github.com/users/dvinciguerra/repos
+
+# With authentication (personal token)
+yobi -A bearer -a your_github_token https://api.github.com/user
+```
+
+**HTTPBin (API Testing Tool)**
+
+```bash
+# GET with query params
+yobi https://httpbin.org/get name=John age=30
+
+# POST with JSON
+yobi POST https://httpbin.org/post name=John age:=30 active:=true
+
+# Custom headers
+yobi https://httpbin.org/headers \
+  "X-Custom:value" \
+  "User-Agent:Yobi/1.0"
+
+# Basic authentication test
+yobi https://httpbin.org/basic-auth/username/password \
+  -A basic -a username:password
+
+# Simulate delay
+yobi https://httpbin.org/delay/5
+
+# Test timeout
+yobi --timeout 2 https://httpbin.org/delay/10
+```
+
+**Typical REST API**
+
+```bash
+# List resources
+yobi GET https://api.example.com/v1/users
+
+# Create resource
+yobi POST https://api.example.com/v1/users \
+  name="John Silva" \
+  email="john@example.com" \
+  department="IT"
+
+# Update resource
+yobi PUT https://api.example.com/v1/users/123 \
+  name="John da Silva" \
+  department="Development"
+
+# Partial update
+yobi PATCH https://api.example.com/v1/users/123 \
+  department="Management"
+
+# Delete resource
+yobi DELETE https://api.example.com/v1/users/123
+
+# With pagination
+yobi GET https://api.example.com/v1/users \
+  page:=1 \
+  limit:=10
+
+# With filters
+yobi GET https://api.example.com/v1/users \
+  department="IT" \
+  status="active"
+```
+
+
 
 ## Development
 
