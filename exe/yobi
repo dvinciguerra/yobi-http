@@ -16,7 +16,7 @@ require "yobi"
 # parsing arguments
 @options = {
   print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false, follow: false, debug: false,
-  timeout: nil, download: false
+  timeout: nil, download: false, output: nil, content_type: :json
 }
 
 parser = OptionParser.new do |opts|
@@ -28,7 +28,7 @@ parser = OptionParser.new do |opts|
 
   Examples:
     yobi https://api.example.com/users
-    yobi POST https://api.example.com/users name=John age=30
+    yobi POST https://api.example.com/products name="New Product" price:=19.99 enabled:=true tags:=@tags.json
     yobi GET :8080/api/items Authorization:"Bearer $TOKEN"
     yobi -A basic -a user:pass https://api.example.com/secure-data
     yobi --raw --print B POST https://httpbin.org/anything | jq '.headers["User-Agent"]'
@@ -51,6 +51,27 @@ parser = OptionParser.new do |opts|
 
   opts.on("--raw", "Print raw request and response data") do
     @options[:raw] = true
+  end
+
+  opts.on("--form", "Send data as application/x-www-form-urlencoded instead of JSON") do
+    @options[:content_type] = :form
+  end
+
+  opts.on("--multipart", "Send data as multipart/form-data instead of JSON") do
+    @options[:content_type] = :multipart
+  end
+
+  opts.on("--xml", "Send data as application/xml instead of JSON") do
+    @options[:content_type] = :xml
+  end
+
+  opts.on("--binary", "Send data as application/octet-stream instead of JSON") do
+    @options[:content_type] = :binary
+  end
+
+  opts.on("--json", "Send data as application/json (default)") do
+    # This option is implicit since JSON is the default, but we can set it explicitly if needed
+    @options[:content_type] = :json
   end
 
   opts.on("-h", "--help", "Print this help message") do
@@ -101,13 +122,14 @@ method = Yobi.args.http_method?(ARGV[0]) ? ARGV.shift : "GET"
 # resolve the URL
 url = Yobi.args.url(ARGV.shift)
 
-data = Yobi.args.parse_data(ARGV)
-headers = Yobi.args.parse_headers(ARGV)
+data = Yobi.args.parse_data(ARGV, @options)
+query = Yobi.args.parse_query(ARGV, @options)
+headers = Yobi.args.parse_headers(ARGV, @options)
 
 # prepare authentication header if auth is provided
 Yobi.args.auth_header(headers, @options) if @options[:auth]
 
-Yobi::Http.request(method, url, data: data, headers: headers, options: @options) do |http, request|
+Yobi::Http.request(method, url, data: data, headers: headers, query: query, options: @options) do |http, request|
   options = @options
 
   # follow redirects, offline, download or standard request mode
