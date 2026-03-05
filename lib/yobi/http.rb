@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "net/http"
 
 module Yobi
@@ -7,10 +8,22 @@ module Yobi
   module Http
     METHODS = %w[GET POST PUT DELETE PATCH HEAD OPTIONS].freeze
 
+    CONTENT_TYPES = {
+      text: "text/plain",
+      html: "text/html",
+      form: "application/x-www-form-urlencoded",
+      multipart: "multipart/form-data",
+      xml: "application/xml",
+      binary: "application/octet-stream",
+      json: "application/json"
+    }.freeze
+
     class << self
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-      def request(method, url, data: {}, headers: {}, options: {})
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+      def request(method, url, data: {}, query: {}, headers: {}, options: {})
         @uri = URI(url)
+        @uri.query = URI.encode_www_form(**query) unless query.empty?
+
         @options = options
         @method = method.capitalize
 
@@ -33,7 +46,7 @@ module Yobi
           exit 1
         end
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
 
       # rubocop:disable Metrics/ParameterLists
       def follow_redirects(response, url, method, data, headers, options)
@@ -50,7 +63,7 @@ module Yobi
       end
       # rubocop:enable Metrics/ParameterLists
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      # rubocop:disable Metrics/AbcSize
       def offline_mode(_request, options)
         Net::HTTP.class_eval do
           def connect; end
@@ -59,7 +72,7 @@ module Yobi
         options[:verbose] = true
 
         Net::HTTPResponse.new("1.1", "200", "OK").tap do |response|
-          response["Content-Type"] = "application/json"
+          response["Content-Type"] = CONTENT_TYPES.fetch(options[:content_type], CONTENT_TYPES[:json])
           response["Access-Control-Allow-Credentials"] = true
           response["Access-Control-Allow-Origin"] = "*"
           response["Connection"] = "close"
@@ -71,9 +84,9 @@ module Yobi
           response.instance_variable_set(:@read, true)
         end
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+      # rubocop:enable Metrics/AbcSize
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+      # rubocop:disable Metrics/AbcSize
       def download(request, http, options)
         http.request(request) do |response|
           url = request.uri.to_s
@@ -93,7 +106,7 @@ module Yobi
 
         exit 0
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+      # rubocop:enable Metrics/AbcSize
     end
   end
 end
