@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    yobi-http (0.6.0)
+    yobi-http (0.16.0)
       base64 (~> 0.3)
       tty-markdown (~> 0.7)
 
@@ -274,7 +274,7 @@ CHECKSUMS
   yard (0.9.38) sha256=721fb82afb10532aa49860655f6cc2eaa7130889df291b052e1e6b268283010f
   yard-activesupport-concern (0.0.1) sha256=be790cb0efc23e2e87677063598ac8b743586154657bbd9655a7f03ce78390ef
   yard-solargraph (0.1.0) sha256=a19a4619c942181a618fb9458970a9d2534cf7fda69fc43949629a7948a5930e
-  yobi-http (0.6.0)
+  yobi-http (0.16.0)
 
 BUNDLED WITH
   4.0.4
