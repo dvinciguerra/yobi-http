@@ -22,12 +22,16 @@ module Yobi
           end
         end
 
+        def parse_query(args, _options)
+          args.select { |arg| arg.match?(/::/) }.map.to_h { |arg| arg.split("::", 2).map(&:strip) }
+        end
+
         # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        def parse_data(args)
-          args.select { |arg| arg.match?("^.*(=|:=|=@|:=@).*$") }.map.to_h do |arg|
+        def parse_data(args, _options)
+          args.select { |arg| arg.match?("^.*(={1}|:=|=@|:=@).*$") }.map do |arg|
             case arg
             when /:=@/
-              arg.split(/:=@/, 2).map do |part|
+              arg.split(":=@", 2).map do |part|
                 part = String(part)&.strip
                 File.exist?(part) ? JSON.parse(File.read(part)) : part
               end
@@ -47,15 +51,18 @@ module Yobi
             else
               arg.split("=", 2).map(&:strip)
             end
-          end
+          end.compact.to_h
         end
         # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
-        def parse_headers(args)
-          { "Content-Type" => "application/json", "User-Agent" => "#{Yobi.name}/#{Yobi::VERSION}" }
-            .merge(args.select do |arg|
-                     arg.match?(/:/) && !arg.match?(/:=/)
-                   end.map.to_h { |arg| arg.split(":", 2).map(&:strip) })
+        def parse_headers(args, options)
+          content_type = content_type_for options[:content_type]
+
+          { "Content-Type" => content_type, "User-Agent" => "#{Yobi.name}/#{Yobi::VERSION}" }.merge(
+            args
+              .select { |arg| arg.match?(/:{1}/) && !arg.match?(/:=/) && !arg.match?(/::/) }
+              .map.to_h { |arg| arg.split(/:{1}/, 2).map(&:strip) }
+          )
         end
 
         def auth_header(headers, options)
@@ -71,6 +78,25 @@ module Yobi
           else
             warn "Unsupported authentication type: #{auth_type}"
             exit 1
+          end
+        end
+
+        private
+
+        def content_type_for(value)
+          case value
+          when :form
+            "application/x-www-form-urlencoded"
+          when :multipart
+            "multipart/form-data"
+          when :xml
+            "application/xml"
+          when :binary
+            "application/octet-stream"
+          when :json, nil
+            "application/json"
+          else
+            "application/json"
           end
         end
       end
