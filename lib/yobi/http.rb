@@ -41,10 +41,16 @@ module Yobi
           request.body = data.to_json unless data.empty?
 
           yield(http, request) if block_given?
-        rescue Net::OpenTimeout, Net::ReadTimeout => e
-          warn "Request timed out: #{e.message}"
-          exit 1
         end
+      rescue Net::OpenTimeout, Net::ReadTimeout => e
+        warn "Timeout: #{e.message}"
+        exit 1
+      rescue SocketError, Socket::ResolutionError => e
+        warn "Network error: #{e.message}"
+        exit 1
+      rescue StandardError => e
+        warn "Error: #{e.message}"
+        exit 1
       end
       # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
 
