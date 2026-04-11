@@ -16,7 +16,7 @@ require "yobi"
 # parsing arguments
 @options = {
   print: "HB", auth: nil, auth_type: "basic", verbose: false, raw: false, offline: false, follow: false, debug: false,
-  timeout: nil, download: false, output: nil, content_type: :json
+  timeout: nil, download: false, output: nil, content_type: :json, stream: false
 }
 
 parser = OptionParser.new do |opts|
@@ -38,6 +38,7 @@ parser = OptionParser.new do |opts|
 
   opts.on("-p", "--print FORMAT", "Specify the output format (e.g., 'H' for headers, 'B' for body)") do |format|
     @options[:print] = format || "HB" # default to printing both headers and body
+    @options[:print_set_explicitly] = true
     warn "[Argument Error] Unsupported format: #{format}" unless format.match?(/\A[HBhb]+\z/)
   end
 
@@ -105,6 +106,12 @@ parser = OptionParser.new do |opts|
     @options[:timeout] = timeout.to_f
   end
 
+  opts.on("--stream", "Stream response body (chunked transfer encoding), printing each chunk as it arrives") do
+    @options[:stream] = true
+    # Default to body-only when streaming, unless the user already set --print explicitly
+    @options[:print] = "B" unless @options[:print_set_explicitly]
+  end
+
   opts.on("--download", "Download response body to a file specified by --output") do
     @options[:download] = true
   end
@@ -147,12 +154,14 @@ Yobi.args.auth_header(headers, @options) if @options[:auth]
 Yobi::Http.request(method, url, data: data, headers: headers, query: query, options: @options) do |http, request|
   options = @options
 
-  # follow redirects, offline, download or standard request mode
+  # follow redirects, offline, download, stream or standard request mode
   response =
     if options[:follow]
       Yobi::Http.follow_redirects(http.request(request), url, method, data, headers, options)
     elsif options[:offline]
       Yobi::Http.offline_mode(request, options)
+    elsif options[:stream]
+      Yobi::Http.stream(request, http, options)
     elsif options[:download]
       Yobi::Http.download(request, http, options)
     else
