@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+## [0.20.0]
+
+- Add support to --stream flag
+
 ## [0.6.0]
 
 - Add output to file feature
