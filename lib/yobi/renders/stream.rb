@@ -36,15 +36,11 @@ module Yobi
             return
           end
 
-          # Prepend any leftover incomplete line from the previous chunk
           data = (@line_buffer || "") + chunk
           @line_buffer = nil
 
-          # ntfy.sh and many SSE/streaming APIs send newline-delimited JSON (ndjson).
-          # Split on newlines; if the last segment doesn't end with "\n" it is incomplete.
           lines = data.split("\n", -1)
 
-          # The last element is either "" (chunk ended with \n) or a partial line
           @line_buffer = lines.pop unless data.end_with?("\n")
 
           lines.each do |line|
