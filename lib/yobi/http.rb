@@ -92,6 +92,24 @@ module Yobi
       end
       # rubocop:enable Metrics/AbcSize
 
+      def stream(request, http, options)
+        http.request(request) do |response|
+          Yobi::Renders::Stream.render_headers(response, options)
+
+          response.read_body do |chunk|
+            Yobi::Renders::Stream.render_chunk(chunk, options)
+          end
+
+          Yobi::Renders::Stream.flush_buffer(options)
+        end
+
+        exit 0
+      rescue Interrupt
+        Yobi::Renders::Stream.flush_buffer(options)
+        $stdout.puts
+        exit 0
+      end
+
       # rubocop:disable Metrics/AbcSize
       def download(request, http, options)
         http.request(request) do |response|
