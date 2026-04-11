@@ -34,8 +34,6 @@ module Yobi
           if @options[:timeout]
             http.open_timeout = @options[:timeout]
             http.read_timeout = @options[:timeout]
-          elsif @options[:stream]
-            http.read_timeout = 0 # no timeout for long-lived streaming connections
           end
 
           headers.each { |key, value| request[key] = value }
