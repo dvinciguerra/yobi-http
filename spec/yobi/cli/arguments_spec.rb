@@ -211,7 +211,8 @@ RSpec.describe Yobi::CLI::Arguments do
       end
 
       it "raises ArgumentError when the file does not exist" do
-        expect { described_class.parse_raw_data("./nonexistent_file.json") }.to raise_error(ArgumentError, /File not found/)
+        expect { described_class.parse_raw_data("./nonexistent_file.json") }
+          .to raise_error(ArgumentError, /File not found: \.\/nonexistent_file\.json/)
       end
     end
   end

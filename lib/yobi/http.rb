@@ -38,7 +38,7 @@ module Yobi
 
           headers.each { |key, value| request[key] = value }
 
-          request.body = body || (data.to_json unless data.empty?)
+          request.body = body || (data.empty? ? nil : data.to_json)
 
           yield(http, request) if block_given?
         end

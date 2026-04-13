@@ -116,7 +116,7 @@ module Yobi
         end
 
         def raw_data_file_path?(value)
-          value.start_with?("./", "../", "/") || File.exist?(value)
+          value.start_with?("./", "../", "/")
         end
 
         def content_type_for_extension(ext)
