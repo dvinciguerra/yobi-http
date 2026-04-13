@@ -20,7 +20,7 @@ module Yobi
 
     class << self
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
-      def request(method, url, data: {}, query: {}, headers: {}, options: {})
+      def request(method, url, data: {}, body: nil, query: {}, headers: {}, options: {})
         @uri = URI(url)
         @uri.query = URI.encode_www_form(**query) unless query.empty?
 
@@ -38,7 +38,7 @@ module Yobi
 
           headers.each { |key, value| request[key] = value }
 
-          request.body = data.to_json unless data.empty?
+          request.body = body || (data.to_json unless data.empty?)
 
           yield(http, request) if block_given?
         end

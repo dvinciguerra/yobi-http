@@ -27,7 +27,7 @@ module Yobi
         end
 
         # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        def parse_data(args, _options)
+        def parse_data(args, _options = {})
           args.select { |arg| arg.match?("^.*(={1}|:=|=@|:=@).*$") }.map do |arg|
             case arg
             when /:=@/
@@ -55,7 +55,7 @@ module Yobi
         end
         # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
-        def parse_headers(args, options)
+        def parse_headers(args, options = {})
           content_type = content_type_for options[:content_type]
 
           { "Content-Type" => content_type, "User-Agent" => "#{Yobi.name}/#{Yobi::VERSION}" }.merge(
@@ -63,6 +63,21 @@ module Yobi
               .select { |arg| arg.match?(/:{1}/) && !arg.match?(/:=/) && !arg.match?(/::/) }
               .map.to_h { |arg| arg.split(/:{1}/, 2).map(&:strip) }
           )
+        end
+
+        def parse_raw_data(value)
+          return nil if value.nil? || value.empty?
+
+          if raw_data_file_path?(value)
+            raise ArgumentError, "File not found: #{value}" unless File.exist?(value)
+
+            ext = File.extname(value).downcase
+            content_type = content_type_for_extension(ext)
+            mode = content_type == "application/octet-stream" ? "rb" : "r"
+            { body: File.read(value, mode: mode), content_type: content_type }
+          else
+            { body: value, content_type: nil }
+          end
         end
 
         def auth_header(headers, options)
@@ -97,6 +112,27 @@ module Yobi
             "application/json"
           else
             "application/json"
+          end
+        end
+
+        def raw_data_file_path?(value)
+          value.start_with?("./", "../", "/") || File.exist?(value)
+        end
+
+        def content_type_for_extension(ext)
+          case ext
+          when ".json"
+            "application/json"
+          when ".txt"
+            "text/plain"
+          when ".html", ".htm"
+            "text/html"
+          when ".xml"
+            "application/xml"
+          when ".csv"
+            "text/csv"
+          else
+            "application/octet-stream"
           end
         end
       end

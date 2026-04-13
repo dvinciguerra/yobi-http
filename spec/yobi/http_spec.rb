@@ -28,13 +28,17 @@ RSpec.describe Yobi::Http do
       it { expect(response.body).to eq("OK") }
     end
 
-    context "when making a POST request with data" do
+    context "when making a POST request with a raw body" do
       let(:meta) { [:post, "http://example.com"] }
       let(:result) { { status: 201, body: "Created" } }
-      let(:arguments) { { body: { "name" => "John" }.to_json } }
 
-      it { expect(response.code).to eq("201") }
-      it { expect(response.body).to eq("Created") }
+      it "sends the raw body directly without JSON encoding" do
+        stub_request(:post, "http://example.com").with(body: '{"name":"Joe"}').to_return(status: 201, body: "Created")
+        response = described_class.request("Post", "http://example.com", body: '{"name":"Joe"}') do |http, request|
+          http.request(request)
+        end
+        expect(response.code).to eq("201")
+      end
     end
   end
 end

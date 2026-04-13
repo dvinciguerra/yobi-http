@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "fileutils"
+require "tmpdir"
 
 RSpec.describe Yobi::CLI::Arguments do
   describe ".http_method?" do
@@ -121,6 +123,96 @@ RSpec.describe Yobi::CLI::Arguments do
 
       expect(described_class.parse_headers(args))
         .to eq({ "Content-Type" => "application/json", "User-Agent" => "#{Yobi.name}/#{Yobi::VERSION}" })
+    end
+  end
+
+  describe ".parse_raw_data" do
+    context "when given an inline string" do
+      it "returns the string as the body with no content_type" do
+        result = described_class.parse_raw_data('{"name":"Joe"}')
+        expect(result).to eq({ body: '{"name":"Joe"}', content_type: nil })
+      end
+
+      it "returns nil when value is nil" do
+        expect(described_class.parse_raw_data(nil)).to be_nil
+      end
+
+      it "returns nil when value is empty" do
+        expect(described_class.parse_raw_data("")).to be_nil
+      end
+    end
+
+    context "when given a file path" do
+      let(:tmpdir) { Dir.mktmpdir }
+
+      after { FileUtils.remove_entry(tmpdir) }
+
+      it "reads a .json file and infers application/json content-type" do
+        path = File.join(tmpdir, "data.json")
+        File.write(path, '{"name":"Joe"}')
+        result = described_class.parse_raw_data(path)
+        expect(result[:body]).to eq('{"name":"Joe"}')
+        expect(result[:content_type]).to eq("application/json")
+      end
+
+      it "reads a .txt file and infers text/plain content-type" do
+        path = File.join(tmpdir, "data.txt")
+        File.write(path, "hello world")
+        result = described_class.parse_raw_data(path)
+        expect(result[:body]).to eq("hello world")
+        expect(result[:content_type]).to eq("text/plain")
+      end
+
+      it "reads a .html file and infers text/html content-type" do
+        path = File.join(tmpdir, "data.html")
+        File.write(path, "<h1>Hello</h1>")
+        result = described_class.parse_raw_data(path)
+        expect(result[:body]).to eq("<h1>Hello</h1>")
+        expect(result[:content_type]).to eq("text/html")
+      end
+
+      it "reads a .htm file and infers text/html content-type" do
+        path = File.join(tmpdir, "data.htm")
+        File.write(path, "<p>Hi</p>")
+        result = described_class.parse_raw_data(path)
+        expect(result[:content_type]).to eq("text/html")
+      end
+
+      it "reads a .xml file and infers application/xml content-type" do
+        path = File.join(tmpdir, "data.xml")
+        File.write(path, "<root/>")
+        result = described_class.parse_raw_data(path)
+        expect(result[:body]).to eq("<root/>")
+        expect(result[:content_type]).to eq("application/xml")
+      end
+
+      it "reads a .csv file and infers text/csv content-type" do
+        path = File.join(tmpdir, "data.csv")
+        File.write(path, "a,b\n1,2")
+        result = described_class.parse_raw_data(path)
+        expect(result[:body]).to eq("a,b\n1,2")
+        expect(result[:content_type]).to eq("text/csv")
+      end
+
+      it "reads a binary file and uses application/octet-stream content-type" do
+        path = File.join(tmpdir, "data.bin")
+        File.write(path, "\x00\x01\x02", mode: "wb")
+        result = described_class.parse_raw_data(path)
+        expect(result[:content_type]).to eq("application/octet-stream")
+      end
+
+      it "uses a relative path starting with ./ to detect a file" do
+        path = "./#{File.basename(tmpdir)}_relative_test.json"
+        File.write(path, '{"x":1}')
+        result = described_class.parse_raw_data(path)
+        expect(result[:content_type]).to eq("application/json")
+      ensure
+        File.delete(path) if File.exist?(path)
+      end
+
+      it "raises ArgumentError when the file does not exist" do
+        expect { described_class.parse_raw_data("./nonexistent_file.json") }.to raise_error(ArgumentError, /File not found/)
+      end
     end
   end
 

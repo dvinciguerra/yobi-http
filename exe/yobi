@@ -90,6 +90,10 @@ parser = OptionParser.new do |opts|
     @options[:content_type] = :json
   end
 
+  opts.on("--data VALUE", "Send raw data as request body (string or file path, e.g., --data='{\"k\":\"v\"}' or --data=./file.json)") do |value|
+    @options[:raw_data] = value
+  end
+
   opts.on("--offline", "Run in offline mode (prepare request but do not send)") do
     @options[:offline] = true
   end
@@ -148,10 +152,18 @@ data = Yobi.args.parse_data(ARGV, @options)
 query = Yobi.args.parse_query(ARGV, @options)
 headers = Yobi.args.parse_headers(ARGV, @options)
 
+# process --data option: raw body from string or file
+raw_body = nil
+if @options[:raw_data]
+  result = Yobi.args.parse_raw_data(@options[:raw_data])
+  raw_body = result[:body]
+  headers["Content-Type"] = result[:content_type] if result[:content_type]
+end
+
 # prepare authentication header if auth is provided
 Yobi.args.auth_header(headers, @options) if @options[:auth]
 
-Yobi::Http.request(method, url, data: data, headers: headers, query: query, options: @options) do |http, request|
+Yobi::Http.request(method, url, data: data, body: raw_body, headers: headers, query: query, options: @options) do |http, request|
   options = @options
 
   # follow redirects, offline, download, stream or standard request mode
